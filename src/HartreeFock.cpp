@@ -13,11 +13,11 @@ HartreeFock::HartreeFock(){
     }
   }
 
-  hamiltonian =   zeros(NUM_STATES,NUM_STATES);
-  density_matrix= zeros(NUM_STATES,NUM_STATES);
-  eigenvectors =  eye(NUM_STATES,NUM_STATES);
-  energies = zeros(NUM_STATES,1);
-  prev_energies = zeros(NUM_STATES,1);
+  hamiltonian    = zeros(NUM_STATES,NUM_STATES);
+  density_matrix = zeros(NUM_STATES,NUM_STATES);
+  eigenvectors   = zeros(NUM_STATES,NUM_STATES);
+  energies       = zeros(NUM_STATES,1);
+  prev_energies  = zeros(NUM_STATES,1);
   for (int i =0; i < 16; i++){
       density_matrix(i,i) = 1;
   }
@@ -28,6 +28,7 @@ HartreeFock::~HartreeFock(){
 
 void HartreeFock::Run(std::string const &in_mat_file_name, std::string const &in_sp_file_name,
                       std::string const &out_file_name){
+  const double HAMILTONIAN_THRESHOLD = 10e-6;
   int iteration = 0;
   mat harmonic_oscillator_energies = zeros(NUM_STATES,NUM_STATES);
   std::cout << "Reading single particle states from file: " << in_sp_file_name << std::endl;
@@ -59,8 +60,18 @@ void HartreeFock::Run(std::string const &in_mat_file_name, std::string const &in
         }//loop over gamma
         
         //Hamiltonian is Hermitian
+        if (alpha == 64 && beta == 68){
+          std::cout << "single particle potential: " << single_particle_potential << std::endl;
+          std::cout << "harmonic oscillator energies: " << harmonic_oscillator_energies(alpha,beta) << "\n\n\n";
+        }
+        
         hamiltonian(alpha,beta) = harmonic_oscillator_energies(alpha,beta) + single_particle_potential;
         hamiltonian(beta,alpha) = harmonic_oscillator_energies(alpha,beta) + single_particle_potential;
+        if (fabs(hamiltonian(alpha,beta)) < HAMILTONIAN_THRESHOLD){
+          hamiltonian(alpha,beta) = 0;
+          hamiltonian(beta,alpha) = 0;
+        }
+
       }//loop over beta
     }//loop over alpha
     eig_sym(energies,eigenvectors,hamiltonian);
@@ -77,17 +88,15 @@ void HartreeFock::Run(std::string const &in_mat_file_name, std::string const &in
 
 
 bool HartreeFock::IsConverged() const {
-  const double THRESHOLD = pow(10,-12);
+  const double THRESHOLD = pow(10,-8);
   vec diff = energies - prev_energies;
-//std::cout << "fabs(diff.min()) = " << fabs(diff.min()) << std::endl;
-//std::cout << "THRESHOLD = " << THRESHOLD << std::endl;
-//std::cout << "DIFF" << std::endl;
-//std::cout << diff << std::endl;
   double sum = 0;
   for (int i = 0; i < NUM_STATES; i++){
     sum += fabs(diff(i)); 
   }
   sum /= NUM_STATES;
+//std::cout << "sum = " << sum << std::endl;
+//std::cout << "diff = " << diff << std::endl;
 
   if (sum < THRESHOLD){
     return true;
@@ -134,6 +143,14 @@ void HartreeFock::SaveToFile(std::string const &file_name, mat &harmonic_oscilla
                         << states.at(i).mj2 <<"/2\t" << states.at(i).tz2 << "/2" << std::endl; 
     }
   }
+
+  std::ofstream mat_file("out_mat_file.dat");
+  mat_file << hamiltonian;
+//for (int i = 0; i < NUM_STATES; i++){
+//  for (int j = 0; j < NUM_STATES; j++){
+//    mat_file << hamiltonian<< std::endl;
+//  }
+//}
 }
 
 void HartreeFock::ReadMatrixElements(std::string const &file_name){
@@ -178,6 +195,7 @@ void HartreeFock::ReadSingleParticleStates(std::string const &file_name){
   while(std::getline(input_file,line)){
     sscanf(line.c_str(), "Orbit number: %d %d %d %d %d %d", &state_index,&n,&l,&j2,&mj2,&tz2); 
     State state(state_index,n,l,j2,mj2,tz2);
+    state.Print();
     single_particle_states.push_back(state);
   }
   return;
@@ -185,14 +203,14 @@ void HartreeFock::ReadSingleParticleStates(std::string const &file_name){
 
 void HartreeFock::FillDensityMatrix(){
   density_matrix = zeros(NUM_STATES,NUM_STATES);
-  //  density_matrix = eigenvectors*eigenvectors
+//density_matrix = eigenvectors*eigenvectors.t();
   for (int gamma = 0; gamma < NUM_STATES; gamma++){
     for (int delta = 0; delta < NUM_STATES; delta++){
-      for(int state = 0; state < NUM_STATES; state++){
-        density_matrix(gamma,delta) += eigenvectors(state,delta)*eigenvectors(state,gamma);
-      }
-    }
-  }
+      for(int state = 0; state < 16; state++){
+        density_matrix(gamma,delta) += eigenvectors(delta,state)*eigenvectors(gamma,state);
+      }//state
+    }//delta
+  }//gamma
 }
 
 

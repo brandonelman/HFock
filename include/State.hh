@@ -23,4 +23,5 @@ class State {
     int j2;//total angular momentum
     int mj2;//total angular momentum z-projection
     int tz2;//isospin z-projection  
+    void Print();
 };
