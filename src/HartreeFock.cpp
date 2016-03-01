@@ -3,24 +3,17 @@
 using namespace arma;
 
 HartreeFock::HartreeFock(){
-  for (int i =0; i < NUM_STATES; i++){
-    for (int j = 0; j < NUM_STATES; j++){
-      for (int k = 0; k < NUM_STATES; k++){
-        for (int l = 0; l < NUM_STATES; l++){
+  for (int i =0; i < MAX_STATES; i++){
+    for (int j = 0; j < MAX_STATES; j++){
+      for (int k = 0; k < MAX_STATES; k++){
+        for (int l = 0; l < MAX_STATES; l++){
           matrix_elements[i][j][k][l] = 0.0;
         }
       }
     }
   }
 
-  hamiltonian    = zeros(NUM_STATES,NUM_STATES);
-  density_matrix = zeros(NUM_STATES,NUM_STATES);
-  eigenvectors   = zeros(NUM_STATES,NUM_STATES);
-  energies       = zeros(NUM_STATES,1);
-  prev_energies  = zeros(NUM_STATES,1);
-  for (int i =0; i < 16; i++){
-      density_matrix(i,i) = 1;
-  }
+  num_states     = 0;
 }
 
 HartreeFock::~HartreeFock(){
@@ -28,16 +21,27 @@ HartreeFock::~HartreeFock(){
 
 void HartreeFock::Run(std::string const &in_mat_file_name, std::string const &in_sp_file_name,
                       std::string const &out_file_name){
-  const double HAMILTONIAN_THRESHOLD = 10e-6;
+  const double HAMILTONIAN_THRESHOLD = 10e-20;//Matrix elements only have precision of 10^-6
   int iteration = 0;
-  mat harmonic_oscillator_energies = zeros(NUM_STATES,NUM_STATES);
+
   std::cout << "Reading single particle states from file: " << in_sp_file_name << std::endl;
-  ReadSingleParticleStates(in_sp_file_name);
-  if (single_particle_states.size() != NUM_STATES){
-    std::cout << "ERROR: Failed to get correct number of single particle states!" << std::endl;
-    std::cout << "Expect: " << NUM_STATES << "\tFound: " << single_particle_states.size() << std::endl;
+
+  num_states = ReadSingleParticleStates(in_sp_file_name);
+  std::cout << "Found " << num_states << " states." << std::endl;
+  if (num_states == 0){
+    std::cout << "Failed to get correct number of states" << std::endl;
     return;
   }
+  hamiltonian    = zeros(num_states,num_states);
+  density_matrix = zeros(num_states,num_states);
+  eigenvectors   = zeros(num_states,num_states);
+  energies       = zeros(num_states,1);
+  prev_energies  = zeros(num_states,1);
+  for (int i =0; i < NUM_PARTICLES; i++){
+      density_matrix(i,i) = 1;
+  }
+
+  mat harmonic_oscillator_energies = zeros(num_states,num_states);
   for (unsigned int i = 0; i < single_particle_states.size(); i++){
     harmonic_oscillator_energies(i,i) = single_particle_states.at(i).GetEnergy();
     prev_energies(i) = harmonic_oscillator_energies(i,i); 
@@ -49,33 +53,28 @@ void HartreeFock::Run(std::string const &in_mat_file_name, std::string const &in
   double single_particle_potential = 0;
   std::cout << "Starting iterations..."<< std::endl;
   while(iteration < MAX_ITERATIONS){
-    std::cout << "Completed iteration: " << iteration << std::endl; 
-    for (int alpha = 0; alpha < NUM_STATES; alpha++){
-      for (int beta = 0; beta < NUM_STATES; beta++){
+    std::cout << "Completed iteration: " << iteration << "\xd"; 
+    for (unsigned int alpha = 0; alpha < num_states; alpha++){
+      for (unsigned int beta = 0; beta < num_states; beta++){
         single_particle_potential = 0;
-        for (int gamma = 0; gamma < NUM_STATES; gamma++){
-          for (int delta = 0; delta < NUM_STATES; delta++){
+        for (unsigned int gamma = 0; gamma < num_states; gamma++){
+          for (unsigned int delta = 0; delta < num_states; delta++){
             single_particle_potential += density_matrix(gamma,delta)*matrix_elements[alpha][gamma][beta][delta];
           }//loop over delta
         }//loop over gamma
         
         //Hamiltonian is Hermitian
-        if (alpha == 64 && beta == 68){
-          std::cout << "single particle potential: " << single_particle_potential << std::endl;
-          std::cout << "harmonic oscillator energies: " << harmonic_oscillator_energies(alpha,beta) << "\n\n\n";
-        }
-        
         hamiltonian(alpha,beta) = harmonic_oscillator_energies(alpha,beta) + single_particle_potential;
         hamiltonian(beta,alpha) = harmonic_oscillator_energies(alpha,beta) + single_particle_potential;
         if (fabs(hamiltonian(alpha,beta)) < HAMILTONIAN_THRESHOLD){
           hamiltonian(alpha,beta) = 0;
           hamiltonian(beta,alpha) = 0;
         }
-
       }//loop over beta
     }//loop over alpha
     eig_sym(energies,eigenvectors,hamiltonian);
     if  (IsConverged()){
+      std::cout << std::endl;
       std::cout << "Converged after " << iteration<< "!" << std::endl;
       break;
     }
@@ -91,10 +90,10 @@ bool HartreeFock::IsConverged() const {
   const double THRESHOLD = pow(10,-8);
   vec diff = energies - prev_energies;
   double sum = 0;
-  for (int i = 0; i < NUM_STATES; i++){
+  for (unsigned int i = 0; i < num_states; i++){
     sum += fabs(diff(i)); 
   }
-  sum /= NUM_STATES;
+  sum /= num_states;
 //std::cout << "sum = " << sum << std::endl;
 //std::cout << "diff = " << diff << std::endl;
 
@@ -131,7 +130,7 @@ void HartreeFock::SaveToFile(std::string const &file_name, mat &harmonic_oscilla
   shell_names.push_back("g");
   shell_names.push_back("h");
 
-  for (int i = 0; i < NUM_STATES; i++){
+  for (unsigned int i = 0; i < num_states; i++){
     if (states.at(i).tz2 < 0){
       proton_out_file << harmonic_oscillator_energies(i,i) <<"\t"<<energies(i) << "\t" <<states.at(i).state_index<<"\t"
                       << states.at(i).n << shell_names.at(states.at(i).l) << states.at(i).j2 << "/2\t" 
@@ -146,11 +145,6 @@ void HartreeFock::SaveToFile(std::string const &file_name, mat &harmonic_oscilla
 
   std::ofstream mat_file("out_mat_file.dat");
   mat_file << hamiltonian;
-//for (int i = 0; i < NUM_STATES; i++){
-//  for (int j = 0; j < NUM_STATES; j++){
-//    mat_file << hamiltonian<< std::endl;
-//  }
-//}
 }
 
 void HartreeFock::ReadMatrixElements(std::string const &file_name){
@@ -177,12 +171,12 @@ void HartreeFock::ReadMatrixElements(std::string const &file_name){
   return;
 }
 
-void HartreeFock::ReadSingleParticleStates(std::string const &file_name){
+unsigned int HartreeFock::ReadSingleParticleStates(std::string const &file_name){
   std::ifstream input_file;
   input_file.open(file_name.c_str());
   if (!input_file.is_open()){
     std::cout << "Failed to open matrix elements file" << std::endl;
-    return;
+    return 0;
   }
 
   int state_index =-1;
@@ -198,15 +192,15 @@ void HartreeFock::ReadSingleParticleStates(std::string const &file_name){
     state.Print();
     single_particle_states.push_back(state);
   }
-  return;
+  return single_particle_states.size();
 }
 
 void HartreeFock::FillDensityMatrix(){
-  density_matrix = zeros(NUM_STATES,NUM_STATES);
-//density_matrix = eigenvectors*eigenvectors.t();
-  for (int gamma = 0; gamma < NUM_STATES; gamma++){
-    for (int delta = 0; delta < NUM_STATES; delta++){
-      for(int state = 0; state < 16; state++){
+//TODO: Check if density matrix is initialized correctly
+  density_matrix = zeros(num_states,num_states);
+  for (unsigned int gamma = 0; gamma < num_states; gamma++){
+    for (unsigned int delta = 0; delta < num_states; delta++){
+      for(unsigned int state = 0; state < NUM_PARTICLES; state++){
         density_matrix(gamma,delta) += eigenvectors(delta,state)*eigenvectors(gamma,state);
       }//state
     }//delta
