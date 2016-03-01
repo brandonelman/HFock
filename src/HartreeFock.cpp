@@ -117,42 +117,45 @@ bool HartreeFock::IsConverged() const {
 void HartreeFock::SaveToFile(std::string const &file_name, mat &harmonic_oscillator_energies, std::vector<State> &states) const{
   //TODO: Need to fix this because eigenstates are ordered by increasing energy, NOT ordered by orbital number, so everything
   //printed here is labeled incorrectly.
-  std::ofstream proton_out_file;
-  std::ofstream neutron_out_file;
-  std::string proton_file_name = "proton_"+file_name;
-  std::string neutron_file_name = "neutron_"+file_name;
-
-  proton_out_file.open(proton_file_name.c_str());
-  if (!proton_out_file.is_open()){
-    std::cout << "ERROR: Failed to open output file!" << std::endl;
-  }
-  neutron_out_file.open(neutron_file_name.c_str());
-  if (!neutron_out_file.is_open()){
-    std::cout << "ERROR: Failed to open output file!" << std::endl;
-  }
-
-  proton_out_file << "HO Energies\tHF Energies\tOrbital#\tnlj\tmj\ttz" << std::endl;
-  neutron_out_file << "HO Energies\tHF Energies\tOrbital#\tnlj\tmj\ttz" << std::endl;
-  std::vector<std::string> shell_names;// = {"s","p","d","f","g"};
-  shell_names.push_back("s");
-  shell_names.push_back("p");
-  shell_names.push_back("d");
-  shell_names.push_back("f");
-  shell_names.push_back("g");
-  shell_names.push_back("h");
+//std::ofstream proton_out_file;
+//std::ofstream neutron_out_file;
+//std::string proton_file_name = "proton_"+file_name;
+//std::string neutron_file_name = "neutron_"+file_name;
+//proton_out_file.open(proton_file_name.c_str());
+//if (!proton_out_file.is_open()){
+//  std::cout << "ERROR: Failed to open output file!" << std::endl;
+//}
+//neutron_out_file.open(neutron_file_name.c_str());
+//if (!neutron_out_file.is_open()){
+//  std::cout << "ERROR: Failed to open output file!" << std::endl;
+//}
+  std::ofstream out_file;
+  out_file.open(file_name.c_str());
+  out_file << "HO Energies\tHF Energies" << std::endl;
+//neutron_out_file << "HO Energies\tHF Energies\tOrbital#\tnlj\tmj\ttz" << std::endl;
+//std::vector<std::string> shell_names;// = {"s","p","d","f","g"};
+//shell_names.push_back("s");
+//shell_names.push_back("p");
+//shell_names.push_back("d");
+//shell_names.push_back("f");
+//shell_names.push_back("g");
+//shell_names.push_back("h");
 
   for (unsigned int i = 0; i < num_states; i++){
-    if (states.at(i).tz2 < 0){
-      proton_out_file << harmonic_oscillator_energies(i,i) <<"\t"<<energies(i) << "\t" <<states.at(i).state_index<<"\t"
-                      << states.at(i).n << shell_names.at(states.at(i).l) << states.at(i).j2 << "/2\t" 
-                      << states.at(i).mj2 <<"/2\t" << states.at(i).tz2 << "/2" << std::endl; 
-    }
-    else if (states.at(i).tz2 > 0){
-      neutron_out_file << harmonic_oscillator_energies(i,i) <<"\t"<<energies(i) << "\t" <<states.at(i).state_index<<"\t" 
-                        << states.at(i).n << shell_names.at(states.at(i).l) << states.at(i).j2 << "/2\t" 
-                        << states.at(i).mj2 <<"/2\t" << states.at(i).tz2 << "/2" << std::endl; 
-    }
+    out_file << harmonic_oscillator_energies(i,i) << "\t" << energies(i) << std::endl;
   }
+//for (unsigned int i = 0; i < num_states; i++){
+//  if (states.at(i).tz2 < 0){
+//    proton_out_file << harmonic_oscillator_energies(i,i) <<"\t"<<energies(i) << "\t" <<states.at(i).state_index<<"\t"
+//                    << states.at(i).n << shell_names.at(states.at(i).l) << states.at(i).j2 << "/2\t" 
+//                    << states.at(i).mj2 <<"/2\t" << states.at(i).tz2 << "/2" << std::endl; 
+//  }
+//  else if (states.at(i).tz2 > 0){
+//    neutron_out_file << harmonic_oscillator_energies(i,i) <<"\t"<<energies(i) << "\t" <<states.at(i).state_index<<"\t" 
+//                      << states.at(i).n << shell_names.at(states.at(i).l) << states.at(i).j2 << "/2\t" 
+//                      << states.at(i).mj2 <<"/2\t" << states.at(i).tz2 << "/2" << std::endl; 
+//  }
+//}
 
   std::ofstream mat_file("out_mat_file.dat");
   mat_file << hamiltonian;
