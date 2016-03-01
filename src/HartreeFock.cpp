@@ -115,6 +115,8 @@ bool HartreeFock::IsConverged() const {
 }
 
 void HartreeFock::SaveToFile(std::string const &file_name, mat &harmonic_oscillator_energies, std::vector<State> &states) const{
+  //TODO: Need to fix this because eigenstates are ordered by increasing energy, NOT ordered by orbital number, so everything
+  //printed here is labeled incorrectly.
   std::ofstream proton_out_file;
   std::ofstream neutron_out_file;
   std::string proton_file_name = "proton_"+file_name;
@@ -205,11 +207,10 @@ unsigned int HartreeFock::ReadSingleParticleStates(std::string const &file_name)
 }
 
 void HartreeFock::FillDensityMatrix(std::vector<int> state_indices, int num_particles){
-//TODO: Check if density matrix is initialized correctly
   density_matrix = zeros(num_states,num_states);
   for (unsigned int gamma_index = 0; gamma_index < num_states; gamma_index++){
     for (unsigned int delta_index = 0; delta_index < num_states; delta_index++){
-      for(unsigned int state_index = 0; state_index < num_particles; state_index++){
+      for(int state_index = 0; state_index < num_particles; state_index++){
         density_matrix(gamma_index,delta_index) += eigenvectors(delta_index,state_index)*eigenvectors(gamma_index,state_index);
       }//state
     }//delta
