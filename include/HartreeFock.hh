@@ -5,6 +5,7 @@
 #include <iostream>
 #include <armadillo>
 #include <fstream>
+#include <algorithm>
 #include "State.hh"
 
 class HartreeFock {
@@ -13,9 +14,9 @@ class HartreeFock {
     ~HartreeFock();
 
     void Run(std::string const &in_mat_file_name, std::string const &in_sp_file_name,
-             std::string const &out_file_name);
+             std::string const &out_file_name, int num_particles);
     unsigned int num_states;
-    static const int NUM_PARTICLES = 16;
+//    static const int NUM_PARTICLES = 8;
     static const int MAX_ITERATIONS = 50;
     static const int MAX_STATES = 100;
 
@@ -32,7 +33,7 @@ class HartreeFock {
     //Fills the 80x80 matrix_elements array
     void ReadMatrixElements(std::string const &in_mat_file_name);
     unsigned int ReadSingleParticleStates(std::string const &in_sp_file_name);
-    void FillDensityMatrix();
+    void FillDensityMatrix(std::vector<int>, int num_particles);
 
     std::vector<State> single_particle_states;
     arma::mat hamiltonian; 
